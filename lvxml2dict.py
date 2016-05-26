@@ -21,10 +21,17 @@ class Cluster:
     }
 
     def __init__(self, root):
-        if root.tag != 'Cluster':
-            msg = 'Cannot parse this tree unless root.tag is Cluster'
-            raise ValueError(msg)
-        self.root = root
+        try:
+            if root.tag != 'Cluster':
+                msg = 'Cannot parse this tree unless root.tag is Cluster'
+                raise ValueError(msg)
+            self.root = root
+        except AttributeError:
+            root = ET.parse(root).getroot()
+            if root.tag != 'Cluster':
+                msg = 'Cannot parse this tree unless root.tag is Cluster'
+                raise ValueError(msg)
+            self.root = root
 
     def to_dict(self):
         '''Convert this cluster xml tree to a python dict.
