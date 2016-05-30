@@ -67,10 +67,8 @@ for f in listdir(root_path):
 plt.tight_layout(w_pad=0, h_pad=0)
 plt.show()
 
-Hcs = np.array([x[1] for row in Hcs for x in row])
-Mrs = np.array([x[1] for row in Mrs for x in row])
-# Hcsnp = np.array([[x[1] for x in row] for row in Hcs])
-# Mrsnp = np.array([[x[1] for x in row] for row in Mrs])
+Hcs = np.rot90(np.array([x[1] for row in Hcs for x in row]), 3)
+Mrs = np.rot90(np.array([x[1] for row in Mrs for x in row]), 3)
 
 gs = GridSpec(10, 10)
 ax0 = plt.subplot(gs[0:9, :5])
@@ -93,4 +91,3 @@ ax2.set_title('Mrem/Msat')
 ax2.set_aspect('equal', adjustable='box')
 plt.tight_layout()
 plt.show()
-
