@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 import numpy as np
 from collections import Iterable
+from scipy.optimize import curve_fit
+
 
 def line(x, m, b):
     return m * x + b
@@ -269,26 +271,25 @@ def threshold_crop(x, y, thresh=np.float('inf'), axis='x', **kwargs):
     return x[ind], y[ind]
     
 
-def Hc_of(x, y, name_gleaner, ks=2, fit_ks_multiplier=5.0, **kwargs):
-    v = float(name_gleaner.glean(kwargs['target'])['v'])
+def Hc_of(x, y, ks=2, fit_ks_multiplier=5.0):
     # Setup indices
     gt0idx = x >= 0
     lt0idx = x < 0
     ymgt0idx = np.argmin(np.abs(y[gt0idx]))
     ymlt0idx = np.argmin(np.abs(y[lt0idx]))
     # Compute Hc
-    Hc_gt0 = x[gt0idx][ymgt0idx-ks:ymgt0idx+ks].mean()
-    Hc_lt0 = x[lt0idx][ymlt0idx-ks:ymlt0idx+ks].mean()
+    Hc_gt0 = x[gt0idx][ymgt0idx - ks:ymgt0idx + ks].mean()
+    Hc_lt0 = x[lt0idx][ymlt0idx - ks:ymlt0idx + ks].mean()
     Hc_avg = (abs(Hc_gt0) + abs(Hc_lt0))/2.
-    vals = (v, Hc_lt0, Hc_gt0, Hc_avg)
-    print(('V: {}   Hc: (-) {}, (+) {}, (avg) {}'.format(*vals)))
+    vals = (Hc_lt0, Hc_gt0, Hc_avg)
+    print(('Hc: (-) {}, (+) {}, (avg) {}'.format(*vals)))
     # Compute sigma_y and m
     s_y = sigma_y(x, y)
     fksm = fit_ks_multiplier
-    fitygt0 = y[gt0idx][ymgt0idx-fksm*ks:ymgt0idx+fksm*ks]
-    fitxgt0= x[gt0idx][ymgt0idx-fksm*ks:ymgt0idx+fksm*ks]
-    fitylt0 = y[lt0idx][ymlt0idx-fksm*ks:ymlt0idx+fksm*ks]
-    fitxlt0 = x[lt0idx][ymlt0idx-fksm*ks:ymlt0idx+fksm*ks]
+    fitygt0 = y[gt0idx][ymgt0idx - fksm * ks:ymgt0idx + fksm * ks]
+    fitxgt0 = x[gt0idx][ymgt0idx - fksm * ks:ymgt0idx + fksm * ks]
+    fitylt0 = y[lt0idx][ymlt0idx - fksm * ks:ymlt0idx + fksm * ks]
+    fitxlt0 = x[lt0idx][ymlt0idx - fksm * ks:ymlt0idx + fksm * ks]
     try:
         (mgt0, _), _ = curve_fit(line, fitxgt0, fitygt0)
         (mlt0, _), _ = curve_fit(line, fitxlt0, fitylt0)
@@ -302,11 +303,10 @@ def Hc_of(x, y, name_gleaner, ks=2, fit_ks_multiplier=5.0, **kwargs):
         s_x = np.float('0.0')
     # return np.array(v), np.array(s_y)
     # return np.array(v), np.array(Hc_avg)
-    return np.array([v]*3), np.array([Hc_avg+x for x in (-s_x, 0, s_x)])
+    return np.array([Hc_avg + x for x in (-s_x, 0, s_x)])
 
 
-def Mrem_of(x, y, name_gleaner, ks=3, **kwargs):
-    v = float(name_gleaner.glean(kwargs['target'])['v'])
+def Mrem_of(x, y, ks=3):
     # Setup indices
     N = len(x)
     inds = np.arange(N).reshape(4, N//4)
@@ -321,4 +321,26 @@ def Mrem_of(x, y, name_gleaner, ks=3, **kwargs):
     yq12avg = abs(np.mean(yq12[xmq12i-ks:xmq12i+ks]))
     mrem = (yq03avg + yq12avg)/2.
     s_y = sigma_y(x, y)
-    return np.array([v]*3), np.array([mrem+x for x in (-s_y, 0, s_y)])
+    return np.array([mrem+x for x in (-s_y, 0, s_y)])
+
+
+def sigma_y(x, y, fit_int=(15.0, 20.0)):
+    '''Estimate the y noise. fit_int designates a flat or linear region.
+    Fit the region and subtract the linear term. Then the std of the 
+    entire region is an estimate of the std of the whole sample.
+    '''
+    N = len(x)
+    x_q1, y_q1 = x[:N//4], y[:N//4]
+    idx = (fit_int[0] < x_q1) & (x_q1 < fit_int[1])
+    popt, pcov = curve_fit(line, x_q1[idx], y_q1[idx])
+    return np.std(y_q1[idx] - line(x_q1[idx], *popt))
+
+
+def proj_sigma(sigma, m):
+    '''This will, for example, tell you what the uncertainty in an x-intercept
+    is given some sample with some y-noise and an estimate of the slope near
+    the intercept. More generally consider a ray at some angle theta to two 
+    parallel rays seperated by sigma. This formula is the length of the 
+    segment of the angled ray that lies in between the parallel rays.
+    '''
+    return np.float64(sigma) / np.float64(m)
