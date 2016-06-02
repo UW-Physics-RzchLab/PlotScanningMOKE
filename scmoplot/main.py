@@ -11,8 +11,8 @@ from transformer import Transformer
 import transformations as tfms
 import re
 
-xlim, ylim = 20.0, 1.1
-thresh = 13
+xlim, ylim = 10.0, 0.05
+thresh = 7
 
 ng = NameGleaner(scan=r'scan=(\d+)', x=r'x=(\d+)', y=r'y=(\d+)',
                  averaged=r'(averaged)')
@@ -24,14 +24,15 @@ tfmr.add(20, tfms.flatten_saturation,
           params={'threshold': thresh, 'polarity': '+'})
 tfmr.add(25, tfms.center)
 tfmr.add(30, tfms.wrapped_medfilt, params={'ks': 157})
-tfmr.add(40, tfms.saturation_normalize, params={'thresh': thresh})
+#tfmr.add(40, tfms.saturation_normalize, params={'thresh': thresh})
 
 
-root_path = '/home/jji/Desktop/scanning_moke_test/trial0_5x5_BFO_test_sample'
+#root_path = '/home/jji/Desktop/scanning_moke_test/trial0_5x5_BFO_test_sample'
+root_path = r'C:\Users\Tor\Desktop\test\trial1_5x5_BFO_test_sample'
 clust = Cluster(join(root_path, 'parameters.xml')).to_dict()
 
-# gridsize = (clust..., ...)   # can get from clust for newer clust datatype 
-gridsize = (5, 5)
+gridsize = (clust['Rows'], clust['Cols'])   # can get from clust for newer clust datatype 
+#gridsize = (5, 5)
 
 fig, axarr = plt.subplots(ncols=gridsize[0], nrows=gridsize[1], 
                           figsize=(10, 10))
@@ -56,13 +57,18 @@ for f in listdir(root_path):
         B, V = tfmr((B, V), f)
         ax.plot(B, V, 'k-')
 
-        Hc = tfms.Hc_of(B, V)
-        Hcs[y][x] = Hc
-        Mr = tfms.Mrem_of(B, V)
-        Mrs[y][x] = Mr
-        zs = np.zeros(3)
-        ax.plot(zs, Mr, 'ro', ms=7)
-        ax.plot(Hc, zs, 'ro', ms=7)
+        try:
+            Hc = tfms.Hc_of(B, V)
+            Hcs[y][x] = Hc
+            Mr = tfms.Mrem_of(B, V)
+            Mrs[y][x] = Mr
+            zs = np.zeros(3)
+            ax.plot(zs, Mr, 'ro', ms=7)
+            ax.plot(Hc, zs, 'ro', ms=7)
+        except Exception as e:
+            print('\t{}'.format(e))
+            Hcs[y][x] = 0.0
+            Mrs[y][x] = 0.0
 
 plt.tight_layout(w_pad=0, h_pad=0)
 plt.show()

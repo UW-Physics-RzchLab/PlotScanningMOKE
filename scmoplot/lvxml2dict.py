@@ -2,11 +2,6 @@ import xml.etree.ElementTree as ET
 from os.path import join
 import re
 
-root_path = '/home/jji/Desktop/scanning_moke_test/trial0_5x5_BFO_test_sample'
-parameters_path = join(root_path, 'parameters.xml')
-tree = ET.parse(parameters_path)
-root = tree.getroot()
-
 to_nice_string = lambda x: re.sub(r'[\s\n]+', ' ', str(x).strip())
 
 class Cluster:
@@ -55,7 +50,16 @@ class Cluster:
     def num_elements(self):
         return int(next(self.root.iterfind('NumElts')).text)
 
-c = Cluster(root)
-from pprint import pprint as pp
-pp(c.to_dict())
+
+if __name__ == '__main__':
+
+
+    root_path = '/home/jji/Desktop/scanning_moke_test/trial0_5x5_BFO_test_sample'
+    parameters_path = join(root_path, 'parameters.xml')
+    tree = ET.parse(parameters_path)
+    root = tree.getroot()
+    
+    c = Cluster(root)
+    from pprint import pprint as pp
+    pp(c.to_dict())
 
