@@ -16,7 +16,6 @@ import re
      - Or don't normalize any curves and just compute the contrast range that
        the pcolor maps should use. This is what we will do if/when we convert
        to polarization rotation eventually.
-  - Fix indexing so that the plots map to real space
 """
 
 
@@ -59,7 +58,7 @@ for f in listdir(root_path):
     if gleaned['averaged']:
         print('Plotting %s' % f)
         x, y = int(gleaned['x']), int(gleaned['y'])
-        ax = axarr[x, y]
+        ax = axarr[y, x]
         B, V = np.loadtxt(join(root_path, f), usecols=(0, 1), unpack=True, 
                           skiprows=1)
         B, V = tfmr((B, V), f)
@@ -84,8 +83,8 @@ plt.show()
 Hcs = np.array([x[1] for row in Hcs for x in row]).reshape(5, 5)
 Mrs = np.array([x[1] for row in Mrs for x in row]).reshape(5, 5)
 
-Hcs = np.rot90(Hcs, 2)
-Mrs = np.rot90(Mrs, 2)
+# Hcs = np.rot90(Hcs, 2)
+# Mrs = np.rot90(Mrs, 2)
 
 gs = GridSpec(10, 10)
 ax0 = plt.subplot(gs[0:9, :5])
