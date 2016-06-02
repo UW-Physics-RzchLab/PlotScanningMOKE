@@ -11,6 +11,14 @@ from transformer import Transformer
 import transformations as tfms
 import re
 
+""" TODO
+  - Need a way to detect non-magnetic areas and normalize them differently...
+     - Or don't normalize any curves and just compute the contrast range that
+       the pcolor maps should use. This is what we will do if/when we convert
+       to polarization rotation eventually.
+"""
+
+
 xlim, ylim = 10.0, 1.1
 thresh, max = 7, 10  # thresh: where to start fits, max: highest field
 
