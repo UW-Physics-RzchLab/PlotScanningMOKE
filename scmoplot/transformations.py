@@ -271,7 +271,7 @@ def threshold_crop(x, y, thresh=np.float('inf'), axis='x', **kwargs):
     return x[ind], y[ind]
     
 
-def Hc_of(x, y, ks=2, fit_ks_multiplier=5.0):
+def Hc_of(x, y, ks=2, fit_ks_multiplier=5.0, fit_int=(15.0, 20.0)):
     # Setup indices
     gt0idx = x >= 0
     lt0idx = x < 0
@@ -284,7 +284,7 @@ def Hc_of(x, y, ks=2, fit_ks_multiplier=5.0):
     vals = (Hc_lt0, Hc_gt0, Hc_avg)
     print(('Hc: (-) {}, (+) {}, (avg) {}'.format(*vals)))
     # Compute sigma_y and m
-    s_y = sigma_y(x, y)
+    s_y = sigma_y(x, y, fit_int)
     fksm = fit_ks_multiplier
     fitygt0 = y[gt0idx][ymgt0idx - fksm * ks:ymgt0idx + fksm * ks]
     fitxgt0 = x[gt0idx][ymgt0idx - fksm * ks:ymgt0idx + fksm * ks]
@@ -306,7 +306,7 @@ def Hc_of(x, y, ks=2, fit_ks_multiplier=5.0):
     return np.array([Hc_avg + x for x in (-s_x, 0, s_x)])
 
 
-def Mrem_of(x, y, ks=3):
+def Mrem_of(x, y, ks=3, fit_int=(15.0, 20.0)):
     # Setup indices
     N = len(x)
     inds = np.arange(N).reshape(4, N//4)
@@ -320,7 +320,7 @@ def Mrem_of(x, y, ks=3):
     yq03avg = abs(np.mean(yq03[xmq03i-ks:xmq03i+ks]))
     yq12avg = abs(np.mean(yq12[xmq12i-ks:xmq12i+ks]))
     mrem = (yq03avg + yq12avg)/2.
-    s_y = sigma_y(x, y)
+    s_y = sigma_y(x, y, fit_int)
     return np.array([mrem+x for x in (-s_y, 0, s_y)])
 
 
