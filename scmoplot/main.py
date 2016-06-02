@@ -11,24 +11,23 @@ from transformer import Transformer
 import transformations as tfms
 import re
 
-xlim, ylim = 10.0, 0.05
-thresh = 7
+xlim, ylim = 10.0, 1.1
+thresh, max = 7, 10  # thresh: where to start fits, max: highest field
 
 ng = NameGleaner(scan=r'scan=(\d+)', x=r'x=(\d+)', y=r'y=(\d+)',
                  averaged=r'(averaged)')
 
 tfmr = Transformer(gleaner=ng)
-# Args: add(slot, func, params={}, filter='.*')
 tfmr.add(10, tfms.scale, params={'xsc': 0.1})
 tfmr.add(20, tfms.flatten_saturation, 
           params={'threshold': thresh, 'polarity': '+'})
 tfmr.add(25, tfms.center)
 tfmr.add(30, tfms.wrapped_medfilt, params={'ks': 157})
-#tfmr.add(40, tfms.saturation_normalize, params={'thresh': thresh})
+tfmr.add(40, tfms.saturation_normalize, params={'thresh': thresh})
 
 
-#root_path = '/home/jji/Desktop/scanning_moke_test/trial0_5x5_BFO_test_sample'
-root_path = r'C:\Users\Tor\Desktop\test\trial1_5x5_BFO_test_sample'
+root_path = '/home/jji/Desktop/scanning_moke_test/trial1_5x5_BFO_test_sample'
+# root_path = r'C:\Users\Tor\Desktop\test\trial1_5x5_BFO_test_sample'
 clust = Cluster(join(root_path, 'parameters.xml')).to_dict()
 
 gridsize = (clust['Rows'], clust['Cols'])   # can get from clust for newer clust datatype 
@@ -58,9 +57,9 @@ for f in listdir(root_path):
         ax.plot(B, V, 'k-')
 
         try:
-            Hc = tfms.Hc_of(B, V)
+            Hc = tfms.Hc_of(B, V, fit_int=(thresh, max))
             Hcs[y][x] = Hc
-            Mr = tfms.Mrem_of(B, V)
+            Mr = tfms.Mrem_of(B, V, fit_int=(thresh, max))
             Mrs[y][x] = Mr
             zs = np.zeros(3)
             ax.plot(zs, Mr, 'ro', ms=7)
@@ -73,8 +72,11 @@ for f in listdir(root_path):
 plt.tight_layout(w_pad=0, h_pad=0)
 plt.show()
 
-Hcs = np.rot90(np.array([x[1] for row in Hcs for x in row]), 3)
-Mrs = np.rot90(np.array([x[1] for row in Mrs for x in row]), 3)
+Hcs = np.array([x[1] for row in Hcs for x in row]).reshape(5, 5)
+Mrs = np.array([x[1] for row in Mrs for x in row]).reshape(5, 5)
+
+Hcs = np.rot90(Hcs, 2)
+Mrs = np.rot90(Mrs, 2)
 
 gs = GridSpec(10, 10)
 ax0 = plt.subplot(gs[0:9, :5])
