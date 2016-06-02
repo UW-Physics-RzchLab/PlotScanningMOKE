@@ -5,10 +5,17 @@ from matplotlib.ticker import FixedLocator
 import numpy as np
 from os import listdir
 from os.path import join
-from lvxml2dict import Cluster
-from namegleaner import NameGleaner
-from transformer import Transformer
-import transformations as tfms
+from .lvxml2dict import Cluster
+from .namegleaner import NameGleaner
+from .transformer import Transformer
+from .transformations import (
+    scale, 
+    flatten_saturation, 
+    center,
+    wrapped_medfilt, 
+    saturation_normalize, 
+    Hc_of, 
+    Mrem_of)
 import re
 
 """ TODO
@@ -17,11 +24,6 @@ import re
        the pcolor maps should use. This is what we will do if/when we convert
        to polarization rotation eventually.
 """
-
-
-xlim, ylim = 10.0, 1.1
-thresh, max = 7, 10  # thresh: where to start fits, max: highest field
-filt_ks = 157
 
 default_ps = {
     'xlim': 10.0,
@@ -32,7 +34,7 @@ default_ps = {
 }
 
 def scmoplot(root_path, user_ps):
-
+    
     ps = dict(default_ps)
     ps.update(user_ps)
 
@@ -40,12 +42,12 @@ def scmoplot(root_path, user_ps):
                      averaged=r'(averaged)')
 
     tfmr = Transformer(gleaner=ng)
-    tfmr.add(10, tfms.scale, params={'xsc': 0.1})
-    tfmr.add(20, tfms.flatten_saturation, 
-              params={'threshold': ps['thresh'], 'polarity': '+'})
-    tfmr.add(25, tfms.center)
-    tfmr.add(30, tfms.wrapped_medfilt, params={'ks': ps['filt_ks']})
-    tfmr.add(40, tfms.saturation_normalize, params={'thresh': ps['thresh']})
+    tfmr.add(10, scale, params={'xsc': 0.1})
+#    tfmr.add(20, flatten_saturation, 
+#              params={'threshold': ps['thresh'], 'polarity': '+'})
+#    tfmr.add(25, center)
+    tfmr.add(30, wrapped_medfilt, params={'ks': ps['filt_ks']})
+#    tfmr.add(40, saturation_normalize, params={'thresh': ps['thresh']})
 
 
     clust = Cluster(join(root_path, 'parameters.xml')).to_dict()
@@ -54,15 +56,12 @@ def scmoplot(root_path, user_ps):
     fig, axarr = plt.subplots(ncols=gx, nrows=gy, 
                               figsize=(10, 10))
 
-    for row in axarr:
-        for ax in row:
-            ax.xaxis.set_ticklabels([])
-            ax.yaxis.set_ticklabels([])
-            ax.set_xlim(-ps['xlim'], ps['xlim'])
-            ax.set_ylim(-ps['ylim'], ps['ylim'])
 
     Hcs = [[None for i in range(gx)] for i in range(gy)]
     Mrs = [[None for i in range(gx)] for i in range(gy)]
+    
+    vmintemp = []
+    vmaxtemp = []    
     for f in listdir(root_path):
         gleaned = ng.glean(f)
         if gleaned['averaged']:
@@ -71,13 +70,19 @@ def scmoplot(root_path, user_ps):
             ax = axarr[y, x]
             B, V = np.loadtxt(join(root_path, f), usecols=(0, 1), unpack=True, 
                               skiprows=1)
+      
             B, V = tfmr((B, V), f)
+
+            vmintemp.append(min(V))
+            print(min(V))
+            vmaxtemp.append(max(V))                        
+            
             ax.plot(B, V, 'k-')
 
             try:
-                Hc = tfms.Hc_of(B, V, fit_int=(ps['thresh'], ps['max']))
+                Hc = Hc_of(B, V, fit_int=(ps['thresh'], ps['max']))
                 Hcs[y][x] = Hc
-                Mr = tfms.Mrem_of(B, V, fit_int=(ps['thresh'], ps['max']))
+                Mr = Mrem_of(B, V, fit_int=(ps['thresh'], ps['max']))
                 Mrs[y][x] = Mr
                 zs = np.zeros(3)
                 ax.plot(zs, Mr, 'ro', ms=7)
@@ -87,8 +92,23 @@ def scmoplot(root_path, user_ps):
                 Hcs[y][x] = 0.0
                 Mrs[y][x] = 0.0
 
+    vmin = min(vmintemp)
+    vmax = max(vmaxtemp)
+    dif=vmax-vmin
+    vmin -= dif*.1
+    vmax += dif*.1                
+    
+    for row in axarr:
+        for ax in row:
+            ax.xaxis.set_ticklabels([])
+            ax.yaxis.set_ticklabels([])
+            ax.set_xlim(-ps['xlim'], ps['xlim'])
+         #   ax.set_ylim(-ps['ylim'], ps['ylim'])
+            ax.set_ylim(vmin, vmax)
+ 
+
     plt.tight_layout(w_pad=0, h_pad=0)
-    plt.show()
+    plt.show(block=True)
 
     Hcs = np.array([x[1] for row in Hcs for x in row]).reshape(gy, gx)
     Mrs = np.array([x[1] for row in Mrs for x in row]).reshape(gy, gx)
@@ -116,7 +136,7 @@ def scmoplot(root_path, user_ps):
     ax2.set_title('Mrem/Msat')
     ax2.set_aspect('equal', adjustable='box')
     plt.tight_layout()
-    plt.show()
+    plt.show(block=True)
 
 if __name__ == '__main__':
     root_path = '/home/jji/Desktop/scanning_moke_test/trial1_5x5_BFO_test_sample'
