@@ -16,6 +16,7 @@ import re
      - Or don't normalize any curves and just compute the contrast range that
        the pcolor maps should use. This is what we will do if/when we convert
        to polarization rotation eventually.
+  - Fix indexing so that the plots map to real space
 """
 
 
