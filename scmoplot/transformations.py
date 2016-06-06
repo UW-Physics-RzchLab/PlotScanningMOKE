@@ -3,6 +3,7 @@ import numpy as np
 from collections import Iterable
 from scipy.optimize import curve_fit
 
+#hello
 
 def line(x, m, b):
     return m * x + b
