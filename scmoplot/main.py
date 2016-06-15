@@ -15,7 +15,9 @@ from .transformations import (
     wrapped_medfilt, 
     saturation_normalize, 
     Hc_of, 
-    Mrem_of)
+    Mrem_of,
+    loop_area,
+    sat_field)
 import re
 
 """ TODO
@@ -40,14 +42,20 @@ def scmoplot(root_path, user_ps):
 
     ng = NameGleaner(scan=r'scan=(\d+)', x=r'x=(\d+)', y=r'y=(\d+)',
                      averaged=r'(averaged)')
+                     
+    # transforms for graph
+    tfmr1 = Transformer(gleaner=ng)
+    tfmr1.add(10, scale, params={'xsc': 0.1})
+    tfmr1.add(30, wrapped_medfilt, params={'ks': ps['filt_ks']})
 
-    tfmr = Transformer(gleaner=ng)
-    tfmr.add(10, scale, params={'xsc': 0.1})
-#    tfmr.add(20, flatten_saturation, 
-#              params={'threshold': ps['thresh'], 'polarity': '+'})
-#    tfmr.add(25, center)
-    tfmr.add(30, wrapped_medfilt, params={'ks': ps['filt_ks']})
-#    tfmr.add(40, saturation_normalize, params={'thresh': ps['thresh']})
+  # transforms for heat map
+    tfmr2 = Transformer(gleaner=ng)
+    tfmr2.add(10, scale, params={'xsc': 0.1})
+    tfmr2.add(20, flatten_saturation, 
+              params={'threshold': ps['thresh'], 'polarity': '+'})
+    tfmr2.add(25, center)
+    tfmr2.add(30, wrapped_medfilt, params={'ks': ps['filt_ks']})
+    tfmr2.add(40, saturation_normalize, params={'thresh': ps['thresh']})
 
 
     clust = Cluster(join(root_path, 'parameters.xml')).to_dict()
@@ -71,18 +79,24 @@ def scmoplot(root_path, user_ps):
             B, V = np.loadtxt(join(root_path, f), usecols=(0, 1), unpack=True, 
                               skiprows=1)
       
-            B, V = tfmr((B, V), f)
-
-            vmintemp.append(min(V))
-            print(min(V))
-            vmaxtemp.append(max(V))                        
+            B1, V1 = tfmr1((B, V), f)
+            B2, V2 = tfmr2((B, V), f)
             
-            ax.plot(B, V, 'k-')
+           # area=loop_area(B2,V2)            
+#            print("loop area: "+str(area))
+            #sat_field(B2,V2,.5,.005)            
+            
+            
+            vmintemp.append(min(V1))
+            vmaxtemp.append(max(V1))                        
+            
+            ax.plot(B1, V1, 'k-')
+           # ax.plot(np.arange(len(sat_field(B2, V2, .5, .005))),sat_field(B2, V2, .5, .005))
 
             try:
-                Hc = Hc_of(B, V, fit_int=(ps['thresh'], ps['max']))
+                Hc = Hc_of(B2, V2, fit_int=(ps['thresh'], ps['max']))
                 Hcs[y][x] = Hc
-                Mr = Mrem_of(B, V, fit_int=(ps['thresh'], ps['max']))
+                Mr = Mrem_of(B2, V2, fit_int=(ps['thresh'], ps['max']))
                 Mrs[y][x] = Mr
                 zs = np.zeros(3)
                 ax.plot(zs, Mr, 'ro', ms=7)
@@ -103,7 +117,7 @@ def scmoplot(root_path, user_ps):
             ax.xaxis.set_ticklabels([])
             ax.yaxis.set_ticklabels([])
             ax.set_xlim(-ps['xlim'], ps['xlim'])
-         #   ax.set_ylim(-ps['ylim'], ps['ylim'])
+            #ax.set_ylim(-ps['ylim'], ps['ylim'])
             ax.set_ylim(vmin, vmax)
  
 
