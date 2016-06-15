@@ -2,6 +2,7 @@
 import numpy as np
 from collections import Iterable
 from scipy.optimize import curve_fit
+from scipy.ndimage import gaussian_filter
 
 #hello
 
@@ -345,3 +346,82 @@ def proj_sigma(sigma, m):
     segment of the angled ray that lies in between the parallel rays.
     '''
     return np.float64(sigma) / np.float64(m)
+    
+def loop_area(B,V):
+    '''Find the area inside of the loop by trapezoidally integrating the top
+    and the bottom of the loop and finding the difference'''
+    left=np.argmin(B)
+    right=np.argmax(B)
+    top_area=np.trapz(V[right:left],B[right:left])
+    bottom_area1=np.trapz(V[0:right],B[0:right])
+    bottom_area2=np.trapz(V[left:len(B)+1],B[left:len(B)+1])
+    total_area=top_area-(bottom_area1+bottom_area2)
+    return total_area
+
+def clean(B,V, sigma=10):
+    '''fits sin curve to B data, and does a gaussian filter on V data'''
+#
+#    Bl=len(B)    
+#    
+#    def func(x,a,b,c):
+#        return a*(np.sin(x-c)-b)
+#    
+#    xdata=np.zeros((Bl))
+#
+#    for k in range(Bl):
+#        xdata[k]=float(k)
+#        xdata[k]*=(2*np.pi)/Bl
+#        
+#    par,junk=curve_fit(func, xdata, B)
+#
+#    
+#    bdata=np.zeros((Bl))
+#    for i in range(Bl):
+#        bdata[i]=float(i)
+#        bdata[i]=func(xdata[i],par[0],par[1], par[2])
+#        
+    vdata=gaussian_filter(V,sigma)
+    bdata=gaussian_filter(B, sigma)    
+    
+    return bdata, vdata
+
+def sat_field(B,V, thresh=.00001):
+    '''finds saturation point. Implements clean function, so only use on raw
+    raw data'''
+    B,V=clean(B,V)    
+        
+    dV=np.gradient(V,B)
+    
+    lsat=0
+    rsat=0    
+    
+    i=len(B)-1
+    while dV[i]<thresh:
+        i-=1
+    lsat=i
+    
+    i=np.argmax(B)
+    while dV[i]<thresh:
+        i-=1
+    rsat=i
+    
+    return lsat, rsat
+    
+def x0slope(B,V):
+    rslope=0
+    lslope=0
+    x,y=clean(B,V)
+    x,y=center(x,y)
+    x,y=saturation_normalize(x,y)
+   
+    for i in range(len(x)-1):
+        if((y[i]<0) and (y[i+1]>0)):
+            rslope=(y[i+1]-y[i])/(x[i+1]-x[i])
+            
+        elif((y[i]>0) and (y[i+1]<0)):
+            lslope=(y[i+1]-y[i])/(x[i+1]-x[i])
+    print(lslope, rslope)
+    return lslope, rslope
+
+        
+    

@@ -10,6 +10,7 @@ from namegleaner import NameGleaner
 from transformer import Transformer
 import transformations as tfms
 import re
+import scipy
 
 """ TODO
   - Need a way to detect non-magnetic areas and normalize them differently...
@@ -46,7 +47,10 @@ def scmoplot(root_path, user_ps):
     tfmr.add(25, tfms.center)
     tfmr.add(30, tfms.wrapped_medfilt, params={'ks': ps['filt_ks']})
     tfmr.add(40, tfms.saturation_normalize, params={'thresh': ps['thresh']})
-
+    
+    tfmr2 = Transformer(gleaner=ng)
+    tfmr2.add(10, tfms.scale, params={'xsc': 0.1})
+    tfmr2.add(30, tfms.wrapped_medfilt, params={'ks': ps['filt_ks']})
 
     clust = Cluster(join(root_path, 'parameters.xml')).to_dict()
     gx, gy = (clust['Rows'], clust['Cols'])
@@ -58,8 +62,8 @@ def scmoplot(root_path, user_ps):
         for ax in row:
             ax.xaxis.set_ticklabels([])
             ax.yaxis.set_ticklabels([])
-            ax.set_xlim(-ps['xlim'], ps['xlim'])
-            ax.set_ylim(-ps['ylim'], ps['ylim'])
+           # ax.set_xlim(-ps['xlim'], ps['xlim'])
+            #ax.set_ylim(-ps['ylim'], ps['ylim'])
 
     Hcs = [[None for i in range(gx)] for i in range(gy)]
     Mrs = [[None for i in range(gx)] for i in range(gy)]
@@ -69,23 +73,37 @@ def scmoplot(root_path, user_ps):
             print('Plotting %s' % f)
             x, y = int(gleaned['x']), int(gleaned['y'])
             ax = axarr[y, x]
-            B, V = np.loadtxt(join(root_path, f), usecols=(0, 1), unpack=True, 
+            Bi, Vi = np.loadtxt(join(root_path, f), usecols=(0, 1), unpack=True, 
                               skiprows=1)
-            B, V = tfmr((B, V), f)
-            ax.plot(B, V, 'k-')
+            B,V = tfmr((Bi,Vi),f)
+            B2, V2 = tfmr2((Bi, Vi), f)
+            cB2, cV2 = tfms.clean(B2,V2)
+            
+            tfms.x0slope(B,V)            
+            
+            lsat,rsat=tfms.sat_field(B2,V2)
+            
+            ax.plot(B,V)
+            ax.plot(np.arange(len(B)),np.zeros((len(B))))
+            ax.plot(np.arange(len(B)),np.ones((len(B))))
 
-            try:
-                Hc = tfms.Hc_of(B, V, fit_int=(ps['thresh'], ps['max']))
-                Hcs[y][x] = Hc
-                Mr = tfms.Mrem_of(B, V, fit_int=(ps['thresh'], ps['max']))
-                Mrs[y][x] = Mr
-                zs = np.zeros(3)
-                ax.plot(zs, Mr, 'ro', ms=7)
-                ax.plot(Hc, zs, 'ro', ms=7)
-            except Exception as e:
-                print('\t{}'.format(e))
-                Hcs[y][x] = 0.0
-                Mrs[y][x] = 0.0
+#            ax.plot(cB2[lsat],cV2[lsat],'b*')
+#            ax.plot(cB2[rsat],cV2[rsat],'r*')
+#
+#            ax.plot(cB2,cV2,'k-')
+
+#            try:
+#                Hc = tfms.Hc_of(B, V, fit_int=(ps['thresh'], ps['max']))
+#                Hcs[y][x] = Hc
+#                Mr = tfms.Mrem_of(B, V, fit_int=(ps['thresh'], ps['max']))
+#                Mrs[y][x] = Mr
+#                zs = np.zeros(3)
+#                ax.plot(zs, Mr, 'ro', ms=7)
+#                ax.plot(Hc, zs, 'ro', ms=7)
+#            except Exception as e:
+#                print('\t{}'.format(e))
+#                Hcs[y][x] = 0.0
+#                Mrs[y][x] = 0.0
 
     plt.tight_layout(w_pad=0, h_pad=0)
     plt.show()

@@ -1,1 +1,1 @@
-from main import scmoplot
+from .main import scmoplot
