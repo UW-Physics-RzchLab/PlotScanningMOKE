@@ -358,38 +358,37 @@ def loop_area(B,V):
     total_area=top_area-(bottom_area1+bottom_area2)
     return total_area
 
-def clean(B,V, sigma=10):
-    '''fits sin curve to B data, and does a gaussian filter on V data'''
-#
-#    Bl=len(B)    
-#    
-#    def func(x,a,b,c):
-#        return a*(np.sin(x-c)-b)
-#    
-#    xdata=np.zeros((Bl))
-#
-#    for k in range(Bl):
-#        xdata[k]=float(k)
-#        xdata[k]*=(2*np.pi)/Bl
-#        
-#    par,junk=curve_fit(func, xdata, B)
-#
-#    
-#    bdata=np.zeros((Bl))
-#    for i in range(Bl):
-#        bdata[i]=float(i)
-#        bdata[i]=func(xdata[i],par[0],par[1], par[2])
-#        
-    vdata=gaussian_filter(V,sigma)
-    bdata=gaussian_filter(B, sigma)    
+def fit_sin(B):
+    '''fits sin curve to B data'''
+        
+    Bl=len(B)    
     
-    return bdata, vdata
+    def func(x,a,b,c):
+        return a*(np.sin(x-c)-b)
+    
+    xdata=np.zeros((Bl))
+
+    for k in range(Bl):
+        xdata[k]=float(k)
+        xdata[k]*=(2*np.pi)/Bl
+        
+    par,junk=curve_fit(func, xdata, B)
+
+    
+    bdata=np.zeros((Bl))
+    for i in range(Bl):
+        bdata[i]=float(i)
+        bdata[i]=func(xdata[i],par[0],par[1], par[2])
+    
+def clean(x,y, sigma=10, **kwargs):
+    '''does a gaussian filter on B and V data'''      
+    x=gaussian_filter(x,sigma)
+    y=gaussian_filter(y, sigma)       
+    return x, y
 
 def sat_field(B,V, thresh=.00001):
-    '''finds saturation point. Implements clean function, so only use on raw
-    raw data'''
-    B,V=clean(B,V)    
-        
+    '''finds saturation point'''
+
     dV=np.gradient(V,B)
     
     lsat=0
@@ -408,20 +407,48 @@ def sat_field(B,V, thresh=.00001):
     return lsat, rsat
     
 def x0slope(B,V):
+    '''find the slope at the x intercepts'''
+    
     rslope=0
     lslope=0
-    x,y=clean(B,V)
-    x,y=center(x,y)
-    x,y=saturation_normalize(x,y)
+    rslopeindex=0
+    lslopeindex=0
+    x,y=center(B,V)
    
     for i in range(len(x)-1):
         if((y[i]<0) and (y[i+1]>0)):
+            rslopeindex=i
             rslope=(y[i+1]-y[i])/(x[i+1]-x[i])
             
         elif((y[i]>0) and (y[i+1]<0)):
+            lslopeindex=i
             lslope=(y[i+1]-y[i])/(x[i+1]-x[i])
-    print(lslope, rslope)
-    return lslope, rslope
+        
+
+ 
+    lxarray=np.arange(-100,101)
+    lxarray=lxarray.astype(float)
+    lxarray*=np.abs(B[0]-B[1])   
+    lyarray=np.zeros((201))
+    lyarray+=lxarray*lslope  
+    lxarray+=B[lslopeindex]
+    
+    rxarray=np.arange(-100,101)
+    rxarray=rxarray.astype(float)
+    rxarray*=np.abs(B[0]-B[1])   
+    ryarray=np.zeros((201))
+    ryarray+=rxarray*rslope  
+    rxarray+=B[rslopeindex]
+    
+    
+    return lslope, rslope, [lxarray,lyarray,B[lslopeindex],V[lslopeindex],
+                            rxarray,ryarray,B[rslopeindex],V[rslopeindex]]
+                            
+def toggle(plots):
+    for plot in plots:
+        plot.set_visible(not plot.get_visible())
+
+    
 
         
     
